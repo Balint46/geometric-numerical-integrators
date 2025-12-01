@@ -53,7 +53,7 @@ from .plotting import (
     create_molecular_animation
 )
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 __all__ = [
     # Integrators
     'verlet_step', 'euler_step', 'symplectic_euler_step', 'rk4_step',
