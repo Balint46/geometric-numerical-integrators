@@ -37,145 +37,6 @@ LABELS = {
 }
 
 
-def plot_kepler_orbits(results: Dict, title: str = "Kepler Orbit Comparison",
-                       figsize: tuple = (16, 5)) -> plt.Figure:
-    """
-    Plot Kepler orbits for different integrators.
-    """
-    # Check which integrators are available
-    available = [i for i in ['verlet', 'rk2', 'euler', 'rk4'] if i in results]
-    n_plots = len(available)
-    fig, axes = plt.subplots(1, n_plots, figsize=(4*n_plots, 5))
-    if n_plots == 1:
-        axes = [axes]
-
-    for ax, integrator in zip(axes, available):
-        data = results[integrator]
-        q = data['q']
-
-        ax.plot(q[:, 0], q[:, 1], color=COLORS[integrator], alpha=0.7, linewidth=0.5)
-        ax.plot(0, 0, 'ko', markersize=10, label='Central body')
-        ax.plot(q[0, 0], q[0, 1], 'go', markersize=5, label='Start')
-
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_title(LABELS[integrator])
-        ax.set_aspect('equal')
-        ax.grid(True, alpha=0.3)
-        ax.legend(fontsize=8)
-
-    fig.suptitle(title, fontsize=14)
-    plt.tight_layout()
-    return fig
-
-
-def plot_orbit_comparison(results: Dict, figsize: tuple = (8, 8)) -> plt.Figure:
-    """
-    Plot all orbits on a single figure for comparison.
-    """
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Include all available integrators
-    for integrator in ['verlet', 'rk2', 'euler', 'rk4']:
-        if integrator in results:
-            data = results[integrator]
-            q = data['q']
-            ax.plot(q[:, 0], q[:, 1], color=COLORS[integrator],
-                    alpha=0.7, linewidth=0.8, label=LABELS[integrator])
-
-    ax.plot(0, 0, 'ko', markersize=12, label='Central body', zorder=5)
-    ax.set_xlabel('x', fontsize=12)
-    ax.set_ylabel('y', fontsize=12)
-    ax.set_title('Orbit Comparison', fontsize=14)
-    ax.set_aspect('equal')
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
-
-    plt.tight_layout()
-    return fig
-
-
-def plot_rk4_verlet_contrast(results: Dict, figsize: tuple = (14, 6)) -> plt.Figure:
-    """
-    Create a detailed contrast plot between RK4 and Verlet methods.
-    Shows orbit overlay and energy error side by side.
-    """
-    fig, axes = plt.subplots(1, 2, figsize=figsize)
-
-    # Left: Orbit comparison (zoomed on differences)
-    ax = axes[0]
-    q_verlet = results['verlet']['q']
-    q_rk4 = results['rk4']['q']
-
-    ax.plot(q_verlet[:, 0], q_verlet[:, 1], color=COLORS['verlet'],
-            linewidth=1.5, label=LABELS['verlet'], alpha=0.8)
-    ax.plot(q_rk4[:, 0], q_rk4[:, 1], color=COLORS['rk4'],
-            linewidth=1.5, label=LABELS['rk4'], alpha=0.8, linestyle='--')
-    ax.plot(0, 0, 'ko', markersize=12, zorder=5)
-
-    ax.set_xlabel('x', fontsize=12)
-    ax.set_ylabel('y', fontsize=12)
-    ax.set_title('Orbit Comparison: Verlet vs RK4', fontsize=13)
-    ax.set_aspect('equal')
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
-
-    # Right: Energy error comparison
-    ax = axes[1]
-    t_verlet = results['verlet']['t']
-    t_rk4 = results['rk4']['t']
-    E_err_verlet = np.abs(results['verlet']['energy_error'])
-    E_err_rk4 = np.abs(results['rk4']['energy_error'])
-
-    ax.semilogy(t_verlet, E_err_verlet, color=COLORS['verlet'],
-                linewidth=1.5, label=LABELS['verlet'])
-    ax.semilogy(t_rk4, E_err_rk4, color=COLORS['rk4'],
-                linewidth=1.5, label=LABELS['rk4'])
-
-    ax.set_xlabel('Time', fontsize=12)
-    ax.set_ylabel('|Energy Error|', fontsize=12)
-    ax.set_title('Energy Error: Verlet (bounded) vs RK4 (drift)', fontsize=13)
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
-
-    # Add annotation explaining the difference
-    ax.text(0.02, 0.98, 'Verlet: oscillates (bounded)\nRK4: secular drift',
-            transform=ax.transAxes, fontsize=9, verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-
-    plt.tight_layout()
-    return fig
-
-
-def plot_energy_error(results: Dict, title: str = "Energy Error Over Time",
-                      figsize: tuple = (10, 6), log_scale: bool = True) -> plt.Figure:
-    """
-    Plot energy error over time for different integrators.
-    """
-    fig, ax = plt.subplots(figsize=figsize)
-
-    for integrator in results:
-        if integrator == 'step_sizes':
-            continue
-        data = results[integrator]
-        t = data['t']
-        error = np.abs(data['energy_error'])
-
-        ax.plot(t, error, color=COLORS.get(integrator, 'gray'),
-                label=LABELS.get(integrator, integrator), linewidth=1)
-
-    ax.set_xlabel('Time', fontsize=12)
-    ax.set_ylabel('|Energy Error| / |E₀|', fontsize=12)
-    ax.set_title(title, fontsize=14)
-    if log_scale:
-        ax.set_yscale('log')
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
-
-    plt.tight_layout()
-    return fig
-
-
 def plot_long_term_energy(results: Dict, figsize: tuple = (12, 5)) -> plt.Figure:
     """
     Plot long-term energy behaviour with comparison.
@@ -250,81 +111,6 @@ def plot_reversibility_test(results: Dict, figsize: tuple = (10, 7)) -> plt.Figu
             horizontalalignment='right',
             bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.7))
 
-    plt.tight_layout()
-    return fig
-
-
-def plot_symplectic_area(results: Dict, figsize: tuple = (20, 8)) -> plt.Figure:
-    """
-    Plot symplectic area preservation test including symplectic Euler and RK2.
-    Shows all integrators with clear visual differences.
-    """
-    # Determine which integrators we have
-    integrators = ['verlet', 'symplectic_euler', 'euler', 'rk2', 'rk4']
-    available = [i for i in integrators if i in results]
-
-    n_plots = len(available) + 1  # +1 for initial circle
-    fig, axes = plt.subplots(1, n_plots, figsize=(4*n_plots, 6))
-
-    # Initial circle
-    ax = axes[0]
-    theta = np.linspace(0, 2*np.pi, len(results['initial_q']) + 1)
-    q_closed = np.append(results['initial_q'], results['initial_q'][0])
-    p_closed = np.append(results['initial_p'], results['initial_p'][0])
-
-    ax.fill(q_closed, p_closed, alpha=0.4, color='gray', edgecolor='black', linewidth=2)
-    ax.set_title(f"Initial Circle\nArea = {results['initial_area']:.4f}", fontsize=12)
-    ax.set_xlabel('Position q', fontsize=11)
-    ax.set_ylabel('Momentum p', fontsize=11)
-    ax.set_aspect('equal')
-    ax.grid(True, alpha=0.3)
-
-    # Get axis limits from initial circle
-    q_range = np.max(results['initial_q']) - np.min(results['initial_q'])
-    p_range = np.max(results['initial_p']) - np.min(results['initial_p'])
-    q_center = (np.max(results['initial_q']) + np.min(results['initial_q'])) / 2
-    p_center = (np.max(results['initial_p']) + np.min(results['initial_p'])) / 2
-    margin = max(q_range, p_range) * 1.5
-
-    ax.set_xlim(q_center - margin, q_center + margin)
-    ax.set_ylim(p_center - margin, p_center + margin)
-
-    # Final shapes for each integrator
-    for ax, integrator in zip(axes[1:], available):
-        data = results[integrator]
-
-        # Close the polygon
-        q_closed = np.append(data['final_q'], data['final_q'][0])
-        p_closed = np.append(data['final_p'], data['final_p'][0])
-
-        ax.fill(q_closed, p_closed,
-                alpha=0.4, color=COLORS[integrator], edgecolor=COLORS[integrator],
-                linewidth=2)
-
-        # Add initial circle for reference
-        init_q_closed = np.append(results['initial_q'], results['initial_q'][0])
-        init_p_closed = np.append(results['initial_p'], results['initial_p'][0])
-        ax.plot(init_q_closed, init_p_closed, 'k--', alpha=0.5, linewidth=1.5,
-                label='Initial')
-
-        # Calculate area ratio and determine if preserved
-        ratio = data['area_ratio']
-        status = "PRESERVED" if abs(ratio - 1.0) < 0.01 else "DISTORTED"
-        status_color = 'green' if status == "PRESERVED" else 'red'
-
-        ax.set_title(f"{LABELS[integrator]}\nArea Ratio = {ratio:.4f} ({status})",
-                     fontsize=11, color=status_color if status == "DISTORTED" else 'black')
-        ax.set_xlabel('Position q', fontsize=11)
-        ax.set_ylabel('Momentum p', fontsize=11)
-        ax.set_aspect('equal')
-        ax.grid(True, alpha=0.3)
-
-        # Use same axis limits for fair comparison
-        ax.set_xlim(q_center - margin, q_center + margin)
-        ax.set_ylim(p_center - margin, p_center + margin)
-
-    plt.suptitle('Symplectic Area Preservation Test\n(Symplectic methods preserve phase space volume)',
-                 fontsize=14, y=1.02)
     plt.tight_layout()
     return fig
 
@@ -602,35 +388,6 @@ def plot_lennard_jones(results: Dict, lj_system, figsize: tuple = (15, 10)) -> p
     return fig
 
 
-def plot_convergence(results: Dict, figsize: tuple = (8, 6)) -> plt.Figure:
-    """
-    Plot convergence study results.
-    """
-    fig, ax = plt.subplots(figsize=figsize)
-
-    h = results['step_sizes']
-
-    for integrator in ['verlet', 'rk2', 'euler', 'rk4']:
-        if integrator in results:
-            errors = results[integrator]
-            ax.loglog(h, errors, 'o-', color=COLORS[integrator],
-                      label=LABELS[integrator], linewidth=2, markersize=6)
-
-    # Reference lines
-    ax.loglog(h, h, 'k:', alpha=0.5, label='O(h)')
-    ax.loglog(h, h**2, 'k--', alpha=0.5, label='O(h²)')
-    ax.loglog(h, h**4, 'k-.', alpha=0.5, label='O(h⁴)')
-
-    ax.set_xlabel('Step Size h', fontsize=12)
-    ax.set_ylabel('Global Error', fontsize=12)
-    ax.set_title('Convergence Study', fontsize=14)
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
-
-    plt.tight_layout()
-    return fig
-
-
 def plot_sv_vs_rk4_long_term(results: Dict, figsize: tuple = (14, 6)) -> plt.Figure:
     """
     Create a detailed comparison plot between Störmer-Verlet and RK4 over long time periods.
@@ -683,75 +440,107 @@ def plot_sv_vs_rk4_long_term(results: Dict, figsize: tuple = (14, 6)) -> plt.Fig
     return fig
 
 
-def plot_sv_vs_rk2_euler_short_term(results: Dict, figsize: tuple = (16, 6)) -> plt.Figure:
+def plot_sv_vs_euler(results: Dict, figsize: tuple = (14, 6)) -> plt.Figure:
     """
-    Create comparison plot between Störmer-Verlet, RK2, and Explicit Euler over short time.
-    Shows the quick drift of RK2 and Euler compared to SV.
+    Create comparison plot between Störmer-Verlet and Explicit Euler.
+    Shows orbit overlay and energy error side by side.
     """
-    fig, axes = plt.subplots(1, 3, figsize=figsize)
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
 
     # Left: Orbit comparison
     ax = axes[0]
     q_verlet = results['verlet']['q']
-    q_rk2 = results['rk2']['q']
     q_euler = results['euler']['q']
 
     ax.plot(q_verlet[:, 0], q_verlet[:, 1], color=COLORS['verlet'],
-            linewidth=1.5, label=LABELS['verlet'], alpha=0.9)
-    ax.plot(q_rk2[:, 0], q_rk2[:, 1], color=COLORS['rk2'],
-            linewidth=1.5, label=LABELS['rk2'], alpha=0.9)
+            linewidth=1.5, label=LABELS['verlet'], alpha=0.8)
     ax.plot(q_euler[:, 0], q_euler[:, 1], color=COLORS['euler'],
-            linewidth=1.5, label=LABELS['euler'], alpha=0.9)
+            linewidth=1.5, label=LABELS['euler'], alpha=0.8)
     ax.plot(0, 0, 'ko', markersize=12, zorder=5)
 
     ax.set_xlabel('x', fontsize=12)
     ax.set_ylabel('y', fontsize=12)
-    ax.set_title('Orbit Comparison\n(Short-term)', fontsize=13)
+    ax.set_title('Orbit Comparison: Verlet vs Euler', fontsize=13)
     ax.set_aspect('equal')
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10)
 
-    # Middle: Energy error on linear scale
+    # Right: Energy error comparison
     ax = axes[1]
     t_verlet = results['verlet']['t']
-    t_rk2 = results['rk2']['t']
     t_euler = results['euler']['t']
-
-    ax.plot(t_verlet, results['verlet']['energy_error'], color=COLORS['verlet'],
-            linewidth=1.5, label=LABELS['verlet'])
-    ax.plot(t_rk2, results['rk2']['energy_error'], color=COLORS['rk2'],
-            linewidth=1.5, label=LABELS['rk2'])
-    ax.plot(t_euler, results['euler']['energy_error'], color=COLORS['euler'],
-            linewidth=1.5, label=LABELS['euler'])
-
-    ax.set_xlabel('Time', fontsize=12)
-    ax.set_ylabel('Energy Error', fontsize=12)
-    ax.set_title('Energy Error (Linear Scale)\nRK2/Euler drift quickly', fontsize=13)
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
-
-    # Right: Energy error on log scale
-    ax = axes[2]
     E_err_verlet = np.abs(results['verlet']['energy_error'])
-    E_err_rk2 = np.abs(results['rk2']['energy_error'])
     E_err_euler = np.abs(results['euler']['energy_error'])
 
     ax.semilogy(t_verlet, E_err_verlet + 1e-16, color=COLORS['verlet'],
                 linewidth=1.5, label=LABELS['verlet'])
-    ax.semilogy(t_rk2, E_err_rk2 + 1e-16, color=COLORS['rk2'],
-                linewidth=1.5, label=LABELS['rk2'])
     ax.semilogy(t_euler, E_err_euler + 1e-16, color=COLORS['euler'],
                 linewidth=1.5, label=LABELS['euler'])
 
     ax.set_xlabel('Time', fontsize=12)
     ax.set_ylabel('|Energy Error|', fontsize=12)
-    ax.set_title('Energy Error (Log Scale)\nExponential growth visible', fontsize=13)
+    ax.set_title('Energy Error: Verlet (bounded) vs Euler (explodes)', fontsize=13)
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10)
 
-    plt.suptitle('Short-term Comparison: Störmer-Verlet vs RK2 vs Explicit Euler\n'
-                 '(Both RK2 and Euler drift; only Verlet preserves energy)',
-                 fontsize=14, y=1.02)
+    # Add annotation explaining the difference
+    ax.text(0.02, 0.98, 'Verlet: oscillates (bounded)\nEuler: exponential growth',
+            transform=ax.transAxes, fontsize=9, verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_sv_vs_rk2(results: Dict, figsize: tuple = (14, 6)) -> plt.Figure:
+    """
+    Create comparison plot between Störmer-Verlet and RK2.
+    Both are 2nd order methods, but only Verlet is symplectic.
+    Shows orbit overlay and energy error side by side.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    # Left: Orbit comparison
+    ax = axes[0]
+    q_verlet = results['verlet']['q']
+    q_rk2 = results['rk2']['q']
+
+    ax.plot(q_verlet[:, 0], q_verlet[:, 1], color=COLORS['verlet'],
+            linewidth=1.5, label=LABELS['verlet'], alpha=0.8)
+    ax.plot(q_rk2[:, 0], q_rk2[:, 1], color=COLORS['rk2'],
+            linewidth=1.5, label=LABELS['rk2'], alpha=0.8)
+    ax.plot(0, 0, 'ko', markersize=12, zorder=5)
+
+    ax.set_xlabel('x', fontsize=12)
+    ax.set_ylabel('y', fontsize=12)
+    ax.set_title('Orbit Comparison: Verlet vs RK2\n(Both 2nd order!)', fontsize=13)
+    ax.set_aspect('equal')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+
+    # Right: Energy error comparison
+    ax = axes[1]
+    t_verlet = results['verlet']['t']
+    t_rk2 = results['rk2']['t']
+    E_err_verlet = np.abs(results['verlet']['energy_error'])
+    E_err_rk2 = np.abs(results['rk2']['energy_error'])
+
+    ax.semilogy(t_verlet, E_err_verlet + 1e-16, color=COLORS['verlet'],
+                linewidth=1.5, label=LABELS['verlet'])
+    ax.semilogy(t_rk2, E_err_rk2 + 1e-16, color=COLORS['rk2'],
+                linewidth=1.5, label=LABELS['rk2'])
+
+    ax.set_xlabel('Time', fontsize=12)
+    ax.set_ylabel('|Energy Error|', fontsize=12)
+    ax.set_title('Energy Error: Verlet (bounded) vs RK2 (drifts)\n(Same order, different behavior!)', fontsize=13)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+
+    # Add annotation explaining the difference
+    ax.text(0.02, 0.98, 'Both O(h²) accuracy\nVerlet: symplectic (bounded)\nRK2: non-symplectic (drifts)',
+            transform=ax.transAxes, fontsize=9, verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
     plt.tight_layout()
     return fig
 
@@ -816,57 +605,66 @@ def plot_energy_crossover(results: Dict, figsize: tuple = (12, 8)) -> plt.Figure
     return fig
 
 
-def plot_symplectic_area_enhanced(results: Dict, figsize: tuple = (16, 8)) -> plt.Figure:
+def plot_area_symplectic_methods(results: Dict, figsize: tuple = (12, 5),
+                                  show_initial_circle: bool = True) -> plt.Figure:
     """
-    Enhanced symplectic area preservation plot showing clear visual distortion
-    for RK2 and Explicit Euler compared to Symplectic Euler and Verlet.
-    """
-    fig, axes = plt.subplots(2, 3, figsize=figsize)
-    axes = axes.flatten()
+    Plot area preservation for symplectic methods (Verlet and Symplectic Euler) only.
+    Shows that these methods preserve the circle area perfectly.
 
-    # Initial circle
-    ax = axes[0]
+    Parameters
+    ----------
+    results : Dict
+        Results from symplectic_area_test
+    figsize : tuple
+        Figure size
+    show_initial_circle : bool
+        If True, shows a separate subplot with the initial circle. Default True.
+    """
+    # Determine number of subplots
+    n_plots = 3 if show_initial_circle else 2
+    fig, axes = plt.subplots(1, n_plots, figsize=figsize)
+    if n_plots == 2:
+        axes = [axes[0], axes[1]]
+
+    # Initial circle for dotted overlay
     q_closed = np.append(results['initial_q'], results['initial_q'][0])
     p_closed = np.append(results['initial_p'], results['initial_p'][0])
 
-    ax.fill(q_closed, p_closed, alpha=0.4, color='gray', edgecolor='black', linewidth=2)
-    ax.plot(q_closed, p_closed, 'k-', linewidth=2)
-    ax.set_title(f"Initial Circle\nArea = {results['initial_area']:.4f}", fontsize=11)
-    ax.set_xlabel('Position q', fontsize=10)
-    ax.set_ylabel('Momentum p', fontsize=10)
-    ax.set_aspect('equal')
-    ax.grid(True, alpha=0.3)
-
-    # Get axis limits
-    margin = 2.0
+    # Get axis limits for symplectic methods
     all_q = [results['initial_q']]
     all_p = [results['initial_p']]
-    for integrator in ['verlet', 'symplectic_euler', 'euler', 'rk2', 'rk4']:
+    for integrator in ['verlet', 'symplectic_euler']:
         if integrator in results:
             all_q.append(results[integrator]['final_q'])
             all_p.append(results[integrator]['final_p'])
     all_q = np.concatenate(all_q)
     all_p = np.concatenate(all_p)
 
-    q_min, q_max = np.min(all_q) - 0.5, np.max(all_q) + 0.5
-    p_min, p_max = np.min(all_p) - 0.5, np.max(all_p) + 0.5
+    q_min, q_max = np.min(all_q) - 0.3, np.max(all_q) + 0.3
+    p_min, p_max = np.min(all_p) - 0.3, np.max(all_p) + 0.3
 
-    ax.set_xlim(q_min, q_max)
-    ax.set_ylim(p_min, p_max)
+    plot_idx = 0
 
-    # Symplectic methods (preserved)
-    symplectic_order = ['verlet', 'symplectic_euler']
-    # Non-symplectic methods (distorted)
-    non_symplectic_order = ['euler', 'rk2', 'rk4']
+    # Optionally show initial circle as separate subplot
+    if show_initial_circle:
+        ax = axes[0]
+        ax.fill(q_closed, p_closed, alpha=0.4, color='gray', edgecolor='black', linewidth=2)
+        ax.plot(q_closed, p_closed, 'k-', linewidth=2)
+        ax.set_title(f"Initial Circle\nArea = {results['initial_area']:.4f}", fontsize=11)
+        ax.set_xlabel('Position q', fontsize=10)
+        ax.set_ylabel('Momentum p', fontsize=10)
+        ax.set_aspect('equal')
+        ax.grid(True, alpha=0.3)
+        ax.set_xlim(q_min, q_max)
+        ax.set_ylim(p_min, p_max)
+        plot_idx = 1
 
-    plot_order = symplectic_order + non_symplectic_order
-    plot_idx = 1
-
-    for integrator in plot_order:
+    # Plot symplectic methods
+    for i, integrator in enumerate(['verlet', 'symplectic_euler']):
         if integrator not in results:
             continue
 
-        ax = axes[plot_idx]
+        ax = axes[plot_idx + i]
         data = results[integrator]
 
         # Close the polygon
@@ -881,15 +679,12 @@ def plot_symplectic_area_enhanced(results: Dict, figsize: tuple = (16, 8)) -> pl
         # Draw initial circle for reference
         ax.plot(q_closed, p_closed, 'k--', alpha=0.4, linewidth=1.5, label='Initial')
 
-        # Calculate area ratio and determine status
+        # Calculate area ratio
         ratio = data['area_ratio']
-        is_preserved = abs(ratio - 1.0) < 0.01
-        status = "PRESERVED" if is_preserved else "DISTORTED"
-        status_color = 'green' if is_preserved else 'red'
+        status = "PRESERVED" if abs(ratio - 1.0) < 0.01 else "DISTORTED"
 
-        ax.set_title(f"{LABELS[integrator]}\nArea Ratio = {ratio:.4f}\n({status})",
-                     fontsize=10, color=status_color if not is_preserved else 'black',
-                     fontweight='bold' if not is_preserved else 'normal')
+        ax.set_title(f"{LABELS[integrator]}\nArea Ratio = {ratio:.6f}\n({status})",
+                     fontsize=11, color='green')
         ax.set_xlabel('Position q', fontsize=10)
         ax.set_ylabel('Momentum p', fontsize=10)
         ax.set_aspect('equal')
@@ -897,11 +692,107 @@ def plot_symplectic_area_enhanced(results: Dict, figsize: tuple = (16, 8)) -> pl
         ax.set_xlim(q_min, q_max)
         ax.set_ylim(p_min, p_max)
 
-        plot_idx += 1
+    plt.suptitle('Symplectic Methods: Area is Preserved\n(Circle rotates/transforms but maintains area)',
+                 fontsize=13, y=1.02)
+    plt.tight_layout()
+    return fig
 
-    plt.suptitle('Symplectic Area Preservation Test\n'
-                 'Symplectic methods (Verlet, Symplectic Euler) preserve area; '
-                 'Non-symplectic methods (Euler, RK2, RK4) distort it',
+
+def plot_area_nonsymplectic_methods(results: Dict, figsize: tuple = (14, 5),
+                                     show_initial_circle: bool = False) -> plt.Figure:
+    """
+    Plot area preservation for non-symplectic methods (Euler, RK2, RK4) only.
+    Shows clear distortion of the circle area for these methods.
+    Uses larger step size and more iterations to make distortion visible.
+    Each integrator uses individual axis limits for clear visibility.
+
+    Parameters
+    ----------
+    results : Dict
+        Results from symplectic_area_test
+    figsize : tuple
+        Figure size
+    show_initial_circle : bool
+        If True, shows a separate subplot with the initial circle. Default False.
+    """
+    # Determine number of subplots
+    n_plots = 4 if show_initial_circle else 3
+    fig, axes = plt.subplots(1, n_plots, figsize=figsize)
+
+    # Initial circle for reference (dotted overlay)
+    q_closed = np.append(results['initial_q'], results['initial_q'][0])
+    p_closed = np.append(results['initial_p'], results['initial_p'][0])
+
+    plot_idx = 0
+
+    # Optionally show initial circle as separate subplot
+    if show_initial_circle:
+        ax = axes[0]
+        ax.fill(q_closed, p_closed, alpha=0.4, color='gray', edgecolor='black', linewidth=2)
+        ax.plot(q_closed, p_closed, 'k-', linewidth=2)
+        ax.set_title(f"Initial Circle\nArea = {results['initial_area']:.4f}", fontsize=11)
+        ax.set_xlabel('Position q', fontsize=10)
+        ax.set_ylabel('Momentum p', fontsize=10)
+        ax.set_aspect('equal')
+        ax.grid(True, alpha=0.3)
+
+        # Set initial circle limits
+        q_init_min = np.min(results['initial_q']) - 0.3
+        q_init_max = np.max(results['initial_q']) + 0.3
+        p_init_min = np.min(results['initial_p']) - 0.3
+        p_init_max = np.max(results['initial_p']) + 0.3
+        ax.set_xlim(q_init_min, q_init_max)
+        ax.set_ylim(p_init_min, p_init_max)
+        plot_idx = 1
+
+    # Plot non-symplectic methods with individual axis limits for each
+    for i, integrator in enumerate(['euler', 'rk2', 'rk4']):
+        if integrator not in results:
+            continue
+
+        ax = axes[plot_idx + i]
+        data = results[integrator]
+
+        # Close the polygon
+        q_final = np.append(data['final_q'], data['final_q'][0])
+        p_final = np.append(data['final_p'], data['final_p'][0])
+
+        # Draw final shape
+        ax.fill(q_final, p_final, alpha=0.4, color=COLORS[integrator],
+                edgecolor=COLORS[integrator], linewidth=2)
+        ax.plot(q_final, p_final, color=COLORS[integrator], linewidth=2)
+
+        # Calculate area ratio and format appropriately
+        ratio = data['area_ratio']
+        status = "PRESERVED" if abs(ratio - 1.0) < 0.01 else "DISTORTED"
+
+        # Use scientific notation for Euler (and RK2 if very large), regular for RK4
+        if integrator == 'euler' or (integrator == 'rk2' and abs(ratio) > 1000):
+            ratio_str = f"{ratio:.4e}"
+        else:
+            ratio_str = f"{ratio:.4f}"
+
+        ax.set_title(f"{LABELS[integrator]}\nArea Ratio = {ratio_str}\n({status})",
+                     fontsize=11, color='red', fontweight='bold')
+        ax.set_xlabel('Position q', fontsize=10)
+        ax.set_ylabel('Momentum p', fontsize=10)
+        ax.set_aspect('equal')
+        ax.grid(True, alpha=0.3)
+
+        # Use individual axis limits for each integrator to see details clearly
+        # But ensure the initial circle is also visible
+        q_min_indiv = min(np.min(q_final), np.min(q_closed)) - 0.5
+        q_max_indiv = max(np.max(q_final), np.max(q_closed)) + 0.5
+        p_min_indiv = min(np.min(p_final), np.min(p_closed)) - 0.5
+        p_max_indiv = max(np.max(p_final), np.max(p_closed)) + 0.5
+
+        ax.set_xlim(q_min_indiv, q_max_indiv)
+        ax.set_ylim(p_min_indiv, p_max_indiv)
+
+        # Draw initial circle for reference (dotted line) - draw after setting limits
+        ax.plot(q_closed, p_closed, 'k--', alpha=0.6, linewidth=2, label='Initial')
+
+    plt.suptitle('Non-Symplectic Methods: Area is NOT Preserved\n(Circle expands/contracts, violating Liouville theorem)',
                  fontsize=13, y=1.02)
     plt.tight_layout()
     return fig
@@ -1170,144 +1061,3 @@ def create_molecular_animation(lj_results: Dict, lj_system, title: str = "Molecu
     return anim
 
 
-def create_orbit_animation(results: Dict, kepler_system=None,
-                           interval: int = 30, skip: int = 5,
-                           embed_limit: int = 20000000) -> animation.FuncAnimation:
-    """
-    Create an animation comparing multiple integrators with the exact orbit.
-
-    Shows Verlet, RK2, RK4, and Euler simultaneously, plus the exact elliptical orbit
-    for reference. This clearly demonstrates which method tracks the true orbit.
-    """
-    # Get data for all methods
-    q_verlet = results['verlet']['q'][::skip]
-    q_rk2 = results['rk2']['q'][::skip] if 'rk2' in results else None
-    q_rk4 = results['rk4']['q'][::skip]
-    q_euler = results['euler']['q'][::skip]
-
-    # Find global bounds
-    all_q_list = [q_verlet, q_rk4, q_euler]
-    if q_rk2 is not None:
-        all_q_list.append(q_rk2)
-    all_q = np.vstack(all_q_list)
-    x_min, x_max = np.min(all_q[:, 0]) - 0.5, np.max(all_q[:, 0]) + 0.5
-    y_min, y_max = np.min(all_q[:, 1]) - 0.5, np.max(all_q[:, 1]) + 0.5
-
-    fig, ax = plt.subplots(figsize=(10, 10))
-
-    ax.set_xlim(x_min, x_max)
-    ax.set_ylim(y_min, y_max)
-    ax.set_aspect('equal')
-    ax.grid(True, alpha=0.3)
-
-    # Central body
-    ax.plot(0, 0, 'ko', markersize=20, zorder=10)
-
-    # If we have the Kepler system, draw the exact orbit
-    if kepler_system is not None:
-        E = results['verlet']['energy'][0]
-        L = kepler_system.angular_momentum(results['verlet']['q'][0], results['verlet']['p'][0])
-        a = -kepler_system.mu / (2 * E)  # Semi-major axis
-        e = kepler_system.eccentricity(results['verlet']['q'][0], results['verlet']['p'][0])
-
-        if e < 1:  # Elliptical orbit
-            theta_exact = np.linspace(0, 2*np.pi, 500)
-            r_exact = a * (1 - e**2) / (1 + e * np.cos(theta_exact))
-            x_exact = r_exact * np.cos(theta_exact)
-            y_exact = r_exact * np.sin(theta_exact)
-            ax.plot(x_exact, y_exact, 'k--', linewidth=2, alpha=0.5, label='Exact orbit')
-
-    # Initialize trail lines and moving points
-    line_verlet, = ax.plot([], [], color=COLORS['verlet'], alpha=0.6, linewidth=1,
-                           label=LABELS['verlet'])
-    line_rk2, = ax.plot([], [], color=COLORS['rk2'], alpha=0.6, linewidth=1,
-                        label=LABELS['rk2']) if q_rk2 is not None else (None,)
-    line_rk4, = ax.plot([], [], color=COLORS['rk4'], alpha=0.6, linewidth=1,
-                        label=LABELS['rk4'])
-    line_euler, = ax.plot([], [], color=COLORS['euler'], alpha=0.6, linewidth=1,
-                          label=LABELS['euler'])
-
-    point_verlet, = ax.plot([], [], 'o', color=COLORS['verlet'], markersize=12,
-                            markeredgecolor='black')
-    point_rk2, = ax.plot([], [], 'o', color=COLORS['rk2'], markersize=12,
-                         markeredgecolor='black') if q_rk2 is not None else (None,)
-    point_rk4, = ax.plot([], [], 'o', color=COLORS['rk4'], markersize=12,
-                         markeredgecolor='black')
-    point_euler, = ax.plot([], [], 'o', color=COLORS['euler'], markersize=12,
-                           markeredgecolor='black')
-
-    ax.legend(loc='upper right', fontsize=10)
-    ax.set_xlabel('x', fontsize=12)
-    ax.set_ylabel('y', fontsize=12)
-    title_text = 'Kepler Orbit: Integrator Comparison\nVerlet (green) vs RK2 (orange) vs RK4 (blue) vs Euler (red)' if q_rk2 is not None else 'Kepler Orbit: Integrator Comparison\nVerlet (green) vs RK4 (blue) vs Euler (red)'
-    ax.set_title(title_text, fontsize=13)
-
-    # Frame counter text
-    time_text = ax.text(0.02, 0.98, '', transform=ax.transAxes, fontsize=10,
-                        verticalalignment='top',
-                        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-
-    def init():
-        line_verlet.set_data([], [])
-        if line_rk2 is not None:
-            line_rk2.set_data([], [])
-        line_rk4.set_data([], [])
-        line_euler.set_data([], [])
-        point_verlet.set_data([], [])
-        if point_rk2 is not None:
-            point_rk2.set_data([], [])
-        point_rk4.set_data([], [])
-        point_euler.set_data([], [])
-        time_text.set_text('')
-        artists = [line_verlet, line_rk4, line_euler, point_verlet, point_rk4, point_euler, time_text]
-        if line_rk2 is not None:
-            artists.insert(1, line_rk2)
-            artists.insert(5, point_rk2)
-        return tuple(artists)
-
-    n_frames_list = [len(q_verlet), len(q_rk4), len(q_euler)]
-    if q_rk2 is not None:
-        n_frames_list.append(len(q_rk2))
-    n_frames = min(n_frames_list)
-
-    def animate(frame):
-        # Update trails
-        line_verlet.set_data(q_verlet[:frame+1, 0], q_verlet[:frame+1, 1])
-        if line_rk2 is not None and q_rk2 is not None:
-            line_rk2.set_data(q_rk2[:frame+1, 0], q_rk2[:frame+1, 1])
-        line_rk4.set_data(q_rk4[:frame+1, 0], q_rk4[:frame+1, 1])
-        line_euler.set_data(q_euler[:frame+1, 0], q_euler[:frame+1, 1])
-
-        # Update current positions
-        point_verlet.set_data([q_verlet[frame, 0]], [q_verlet[frame, 1]])
-        if point_rk2 is not None and q_rk2 is not None:
-            point_rk2.set_data([q_rk2[frame, 0]], [q_rk2[frame, 1]])
-        point_rk4.set_data([q_rk4[frame, 0]], [q_rk4[frame, 1]])
-        point_euler.set_data([q_euler[frame, 0]], [q_euler[frame, 1]])
-
-        # Update time text
-        if q_rk2 is not None:
-            time_text.set_text(f'Frame: {frame}/{n_frames}\n'
-                               f'Verlet stays on orbit\n'
-                               f'RK2 drifts (same order as Verlet!)\n'
-                               f'Euler spirals outward\n'
-                               f'RK4 drifts slowly')
-        else:
-            time_text.set_text(f'Frame: {frame}/{n_frames}\n'
-                               f'Verlet stays on orbit\n'
-                               f'Euler spirals outward\n'
-                               f'RK4 drifts slowly')
-
-        artists = [line_verlet, line_rk4, line_euler, point_verlet, point_rk4, point_euler, time_text]
-        if line_rk2 is not None:
-            artists.insert(1, line_rk2)
-            artists.insert(5, point_rk2)
-        return tuple(artists)
-
-    anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                   frames=n_frames, interval=interval, blit=True)
-
-    # Set embed limit for HTML export
-    plt.rcParams['animation.embed_limit'] = embed_limit
-
-    return anim

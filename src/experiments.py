@@ -325,53 +325,6 @@ def compute_local_error(gradV: Callable, q0: np.ndarray, p0: np.ndarray,
     return results
 
 
-def convergence_study(gradV: Callable, q0: np.ndarray, p0: np.ndarray,
-                      step_sizes: np.ndarray, T_final: float,
-                      exact_solution: Callable = None) -> Dict:
-    """
-    Study convergence order of different integrators.
-
-    Parameters
-    ----------
-    gradV : callable
-        Gradient of potential
-    q0, p0 : np.ndarray
-        Initial conditions
-    step_sizes : np.ndarray
-        Array of step sizes
-    T_final : float
-        Final time
-    exact_solution : callable, optional
-        Function (q0, p0, t) -> (q, p)
-
-    Returns
-    -------
-    dict
-        Errors vs step size for each integrator
-    """
-    results = {'step_sizes': step_sizes}
-
-    for integrator in ['verlet', 'rk2', 'euler', 'rk4']:
-        errors = []
-
-        for h in step_sizes:
-            n_steps = int(T_final / h)
-            t, q_hist, p_hist = integrate(q0, p0, h, n_steps, gradV, integrator)
-
-            if exact_solution is not None:
-                q_exact, p_exact = exact_solution(q0, p0, t)
-                error = np.max(np.linalg.norm(q_hist - q_exact, axis=1))
-            else:
-                # Compare with finest resolution
-                pass
-
-            errors.append(error)
-
-        results[integrator] = np.array(errors)
-
-    return results
-
-
 def lennard_jones_simulation(lj_system, q0: np.ndarray, p0: np.ndarray,
                               h: float, n_steps: int) -> Dict:
     """
