@@ -69,6 +69,7 @@ This decomposition:
 |------------|-------|------------|-----------------|
 | Verlet | 2 | Yes | Yes |
 | Symplectic Euler | 1 | Yes | No |
+| RK2 (Midpoint) | 2 | No | No |
 | Explicit Euler | 1 | No | No |
 | RK4 | 4 | No | No |
 
@@ -87,8 +88,10 @@ This decomposition:
 ## Usage Example
 
 ```python
-from src.integrators import verlet_step, integrate
+from src.integrators import integrate
 from src.systems import KeplerSystem
+from src.experiments import run_kepler_comparison
+from src.plotting import plot_sv_vs_rk4_long_term
 
 # Create Kepler system
 kepler = KeplerSystem(mu=1.0)
@@ -96,10 +99,14 @@ kepler = KeplerSystem(mu=1.0)
 # Initial conditions for elliptical orbit
 q0, p0 = kepler.get_elliptical_orbit_ic(e=0.6, a=1.0)
 
-# Integrate
-t, q_hist, p_hist = integrate(q0, p0, h=0.01, n_steps=10000,
-                               gradV=kepler.gradV, integrator='verlet')
+# Compare integrators over 100 orbits
+results = run_kepler_comparison(kepler, q0, p0, h=0.05, n_orbits=100)
+
+# Visualize long-term behavior
+fig = plot_sv_vs_rk4_long_term(results)
 ```
+
+For a complete demonstration with all experiments, see `main_notebook.ipynb`.
 
 ## References
 
