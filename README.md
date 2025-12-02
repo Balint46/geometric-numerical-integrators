@@ -23,14 +23,19 @@ This project explores the fundamental properties of symplectic integrators throu
 ```
 geometric-numerical-integrators/
 ├── src/
-│   ├── __init__.py          # Package exports
-│   ├── integrators.py       # Core integration methods
-│   ├── systems.py           # Physical systems (Kepler, LJ)
-│   ├── experiments.py       # Experiment functions
-│   └── plotting.py          # Visualization utilities
-├── docs/                    # Theory and reference materials
-├── main_notebook.ipynb      # Complete demonstration notebook
-├── requirements.txt         # Python dependencies
+│   ├── __init__.py               # Package exports
+│   ├── integrators.py            # Core integration methods
+│   ├── systems.py                # Physical systems (Kepler, LJ)
+│   ├── experiments.py            # Experiment functions
+│   ├── plotting.py               # Visualization utilities
+│   ├── generate_static_plots.py  # Generate all static plots
+│   └── generate_animations.py    # Generate all animations
+├── media/
+│   ├── docs/                     # Theory and reference materials
+│   ├── plots/                    # Generated static plots (PNG)
+│   └── animations/               # Generated animations (GIF/MP4)
+├── main_notebook.ipynb           # Complete demonstration notebook
+├── requirements.txt              # Python dependencies
 └── README.md
 ```
 
@@ -45,6 +50,49 @@ pip install -r requirements.txt
 
 # Run the notebook
 jupyter notebook main_notebook.ipynb
+```
+
+## Generating Plots and Animations
+
+The project includes scripts to generate all plots and animations used in the documentation:
+
+### Generate Static Plots
+
+```bash
+# Generate all 14 static plots (saves to media/plots/)
+python src/generate_static_plots.py
+```
+
+This creates high-resolution PNG images including:
+- Splitting diagrams and flow visualizations
+- Method comparisons (Störmer-Verlet vs Euler, RK2, RK4)
+- Energy behavior and convergence analysis
+- Time-reversibility tests
+- Symplectic area preservation
+- Lennard-Jones simulations
+
+### Generate Animations
+
+```bash
+# Generate all animations (saves to media/animations/)
+python src/generate_animations.py
+```
+
+This creates animations in GIF format (and MP4 if ffmpeg is installed):
+- Exact orbit vs Störmer-Verlet comparison
+- Störmer-Verlet vs RK2 comparison
+- Lennard-Jones 2-particle and 3-particle dynamics
+
+**Note:** Animation generation may take several minutes. For MP4 support, install ffmpeg:
+```bash
+# Ubuntu/Debian
+sudo apt-get install ffmpeg
+
+# macOS
+brew install ffmpeg
+
+# Windows
+# Download from https://ffmpeg.org/download.html
 ```
 
 ## The Störmer-Verlet Method
@@ -114,4 +162,4 @@ For a complete demonstration with all experiments, see `main_notebook.ipynb`.
 - Leimkuhler, B., & Reich, S. (2004). *Simulating Hamiltonian Dynamics*. Cambridge University Press.
 - Verlet, L. (1967). Computer "Experiments" on Classical Fluids. *Physical Review*, 159(1), 98-103.
 
-See the `docs/` folder for additional reference materials.
+See the `media/docs/` folder for additional reference materials.
