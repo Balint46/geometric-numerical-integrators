@@ -1,0 +1,748 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\title{Geometric Numerical Integrators}
+\subtitle{The Störmer-Verlet Method and Its Properties}
+\author{Ádám Temesvári \and Bálint Dániel Király \and Zalán Zoltán Horlik}
+\institute{ELTE}
+\date{2025}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}{Table of Contents}
+\tableofcontents
+\end{frame}
+
+\section{Motivation}
+
+\begin{frame}{Why Do Geometric Integrators Matter?}
+\begin{columns}
+\begin{column}{0.45\textwidth}
+\textbf{Problems with classical methods:}
+\begin{itemize}
+    \item Work well in the short term
+    \item Long term: \alert{energy drift}
+    \item Trajectory distortion
+    \item Physically incorrect results
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Application areas:}
+\begin{itemize}
+    \item Celestial mechanics
+    \item Molecular dynamics ($10^6$--$10^9$ steps!)
+    \item Vibrational mechanical models
+\end{itemize}
+\end{column}
+
+\begin{column}{0.55\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{media/plots/02_sv_vs_euler_orbits.png}
+\end{center}
+\vspace{-0.2cm}
+\tiny{Störmer-Verlet vs. Explicit Euler: dramatic difference!}
+\end{column}
+\end{columns}
+\end{frame}
+
+\section{Hamiltonian Systems}
+
+\begin{frame}{Hamiltonian Systems}
+\begin{block}{Definition}
+Hamiltonian systems are described by the differential equations:
+\begin{equation*}
+    \dot{p} = -\nabla_q H(p,q), \qquad \dot{q} = \nabla_p H(p,q)
+\end{equation*}
+where $H(p,q)$ is the \emph{Hamiltonian function} (energy).
+\end{block}
+
+\vspace{0.2cm}
+
+\begin{block}{Separable Hamiltonian}
+Common special case in physical systems:
+\begin{equation*}
+    H(p,q) = \underbrace{\frac{1}{2} p^{T} M^{-1} p}_{\text{kinetic energy}} + \underbrace{U(q)}_{\text{potential energy}}
+\end{equation*}
+\vspace{-0.1cm}
+\small
+Second-order form: $\ddot{q} = f(q)$, where $f(q) = -M^{-1} \nabla U(q)$.
+\end{block}
+\end{frame}
+
+\begin{frame}{Geometric Properties of Hamiltonian Systems}
+\begin{columns}
+\begin{column}{0.58\textwidth}
+\small
+\begin{enumerate}
+    \item \textbf{Symplecticity:} The flow $\varphi_t$ preserves the symplectic structure:
+    \begin{equation*}
+        \varphi_t'(p,q)^{T} \, J \, \varphi_t'(p,q) = J
+    \end{equation*}
+    \vspace{-0.2cm}
+    \small
+    where $J = \begin{pmatrix} 0 & I \\ -I & 0 \end{pmatrix}$
+
+    $\Rightarrow$ Area preservation (Liouville's theorem)
+
+    \item \textbf{Energy conservation:} $H(p(t), q(t)) = \text{constant}$\\
+    \small{$\Rightarrow$ The Hamiltonian is a \emph{first integral}.}
+
+    \item \textbf{Reversibility:} Reversing time ($t \to -t$, $p \to -p$) retraces the original trajectory
+\end{enumerate}
+
+\vspace{0.2cm}
+\alert{Goal:} Numerical methods that preserve these properties!
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{media/docs/Közdiff_Projekt_merged/Végleges/symmetric_reversible_exact.png}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+\section{Störmer-Verlet Method}
+
+\begin{frame}{Derivation of the Störmer-Verlet Method}
+\small
+Starting point: $q'' = f(q)$ second-order differential equation
+
+Discretization: $\frac{q_{n+1}-2q_n+q_{n-1}}{h^2} = f(q_n)$
+
+Introducing auxiliary variables ($v = q'$):
+\begin{equation*}
+    v_{n+\frac{1}{2}} = \frac{q_{n+1}-q_n}{h}, \quad v_n = \frac{q_{n+1}-q_{n-1}}{2h}, \quad q_{n+\frac{1}{2}}=\frac{q_n+q_{n-1}}{2}
+\end{equation*}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\begin{block}{Störmer-Verlet (A)}
+\small
+$(q_n,v_n) \to (q_{n+1},v_{n+1})$
+\begin{equation*}
+\begin{aligned}
+    v_{n+\frac{1}{2}} &= v_n + \frac{h}{2}f(q_n) \\
+    q_{n+1} &= q_n + h v_{n+\frac{1}{2}} \\
+    v_{n+1} &= v_{n+\frac{1}{2}} + \frac{h}{2}f(q_{n+1})
+\end{aligned}
+\end{equation*}
+\end{block}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{block}{Störmer-Verlet (B)}
+\small
+$(q_{n-\frac{1}{2}},v_{n-\frac{1}{2}}) \to (q_{n+\frac{1}{2}},v_{n+\frac{1}{2}})$
+\begin{equation*}
+\begin{aligned}
+    q_n &= q_{n-\frac{1}{2}} + \frac{h}{2}v_{n-\frac{1}{2}} \\
+    v_{n+\frac{1}{2}} &= v_{n-\frac{1}{2}} + hf(q_n) \\
+    q_{n+\frac{1}{2}} &= q_n + \frac{h}{2}v_{n+\frac{1}{2}}
+\end{aligned}
+\end{equation*}
+\end{block}
+\end{column}
+\end{columns}
+
+\vspace{0.2cm}
+\small
+\textbf{Properties:} Second-order, explicit for $f(q)$-type equations
+\end{frame}
+
+\begin{frame}{Sub-operators: SE1 and SE2}
+\small
+Split the methods into smaller sub-operators!
+
+\vspace{0.2cm}
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\textbf{SE1 method:}\\
+\small
+$(q_n,v_n) \to (q_{n+\frac{1}{2}},v_{n+\frac{1}{2}})$
+\begin{equation*}
+\begin{aligned}
+v_{n+\frac{1}{2}} &= v_n + \frac{h}{2}f(q_n) \\
+q_{n+\frac{1}{2}} &= q_n + \frac{h}{2}v_{n+\frac{1}{2}}
+\end{aligned}
+\end{equation*}
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{SE2 method:}\\
+\small
+$(q_{n+\frac{1}{2}},v_{n+\frac{1}{2}}) \to (q_{n+1},v_{n+1})$
+\begin{equation*}
+\begin{aligned}
+q_{n+1} &= q_{n+\frac{1}{2}} + \frac{h}{2}v_{n+\frac{1}{2}} \\
+v_{n+1} &= v_{n+\frac{1}{2}} + \frac{h}{2}f(q_{n+1})
+\end{aligned}
+\end{equation*}
+\end{column}
+\end{columns}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\begin{column}{0.55\textwidth}
+\begin{block}{Composition}
+\small
+The Störmer-Verlet methods:\\
+\vspace{-0.1cm}
+\begin{equation*}
+\begin{aligned}
+    \text{(A)} &= \text{(SE2)} \circ \text{(SE1)} \\
+    \text{(B)} &= \text{(SE1)} \circ \text{(SE2)}
+\end{aligned}
+\end{equation*}
+\end{block}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{center}
+\vspace{-0.3cm}
+\includegraphics[width=\textwidth]{media/docs/Közdiff_Projekt_merged/Végleges/SE12lepes.png}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Geometric Interpretation of the Method}
+% Use a standard relative size command for text fitting
+\footnotesize
+
+\begin{columns}[T] % [T] ensures columns are top-aligned
+
+\begin{column}{0.5\textwidth}
+\textbf{Splitting method:}
+
+Split the vector field:
+\begin{equation*}
+(v, f(q)) = (v,0) + (0,f(q))
+\end{equation*}
+
+Two sub-operators:
+% Reduced spacing around the align block
+\vspace{-0.2cm} 
+\begin{align*}
+\varphi_t^{[1]} &: \begin{cases} q_1 = q_0 + tv_0 \\ v_1 = v_0 \end{cases} \text{(drift)} \\
+\varphi_t^{[2]} &: \begin{cases} q_1 = q_0 \\ v_1 = v_0 + tf(q_0) \end{cases} \text{(kick)}
+\end{align*}
+\vspace{-0.2cm} % Reduced spacing
+
+\alert{Störmer-Verlet (A):}
+\begin{equation*}
+\Phi_h^{(A)} = \varphi_{h/2}^{[2]} \circ \varphi_h^{[1]} \circ \varphi_{h/2}^{[2]}
+\end{equation*}
+
+\alert{Störmer-Verlet (B):}
+\begin{equation*}
+\Phi_h^{(B)} = \varphi_{h/2}^{[1]} \circ \varphi_h^{[2]} \circ \varphi_{h/2}^{[1]}
+\end{equation*}
+
+% Optional: Final small negative space to nudge content up if needed
+\vspace{-0.2cm}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+
+    % IMAGE 1: Top Image
+    \centering
+    \includegraphics[width=0.95\textwidth]{media/docs/Közdiff_Projekt_merged/Végleges/ABlepes.png}
+    
+    \vspace{0.2cm} % Add some space between the top image and the row below
+
+    % IMAGES 2 & 3: Side-by-Side Arrangement
+    % Use minipage for precise horizontal control
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{media/docs/Közdiff_Projekt_merged/Végleges/SVA.png}
+    \end{minipage}%
+    \hfill% The \hfill pushes the two minipages apart
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{media/docs/Közdiff_Projekt_merged/Végleges/SVB.png}
+    \end{minipage}
+
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Generalization to Arbitrary Systems}
+\small
+\textbf{Question:} Can we use Störmer-Verlet for general first-order systems?
+
+\vspace{0.2cm}
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Original:} $q'' = f(q)$
+\begin{equation*}
+\begin{cases}
+    q' = v \\
+    v' = f(q)
+\end{cases}
+\end{equation*}
+
+\vspace{0.1cm}
+
+\textbf{Methods are explicit:}
+\begin{itemize}
+    \item Direct computation
+    \item Low computational cost
+    \item Ideal for this form!
+\end{itemize}
+\end{column}
+
+\begin{column}{0.48\textwidth}
+\textbf{General:} arbitrary system
+\begin{equation*}
+\begin{cases}
+    q' = g(q,v) \\
+    v' = f(q,v)
+\end{cases}
+\end{equation*}
+
+\vspace{0.1cm}
+
+\textbf{SE1 and SE2 become implicit:}
+\begin{align*}
+    v_{n+\frac{1}{2}} &= v_n + \frac{h}{2}f(q_n, \alert{v_{n+\frac{1}{2}}}) \\
+    q_{n+1} &= q_{n+\frac{1}{2}} + \frac{h}{2}g(\alert{q_{n+1}}, v_{n+\frac{1}{2}})
+\end{align*}
+\end{column}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{block}{Conclusion}
+\centering
+\alert{Störmer-Verlet is best suited for $q'' = f(q)$ type equations!}\\
+For general systems, the implicit solves become computationally expensive.
+\end{block}
+\end{frame}
+
+\begin{frame}{Implicit Nature of SVA and SVB for General Systems}
+\small
+\textbf{Both SVA and SVB have TWO implicit steps for general systems!}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\begin{block}{Störmer-Verlet (A)}
+\footnotesize
+For general system $q' = g(q,v)$, $v' = f(q,v)$:
+\begin{align*}
+    v_{n+\frac{1}{2}} &= v_n + \frac{h}{2}f(q_n, \alert{v_{n+\frac{1}{2}}}) \\
+    q_{n+1} &= q_n + \frac{h}{2}\left(g(q_n, v_{n+\frac{1}{2}}) + g(\alert{q_{n+1}}, v_{n+\frac{1}{2}})\right) \\
+    v_{n+1} &= v_{n+\frac{1}{2}} + \frac{h}{2}f(q_{n+1}, v_{n+\frac{1}{2}})
+\end{align*}
+\vspace{-0.1cm}
+\centering
+\alert{Two implicit solves required!}
+\end{block}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\begin{block}{Störmer-Verlet (B)}
+\footnotesize
+For general system $q' = g(q,v)$, $v' = f(q,v)$:
+\begin{align*}
+    q_n &= q_{n-\frac{1}{2}} + \frac{h}{2}g(\alert{q_n}, v_{n-\frac{1}{2}}) \\
+    v_{n+\frac{1}{2}} &= v_{n-\frac{1}{2}} + \frac{h}{2}\left(f(q_n, v_{n-\frac{1}{2}}) + f(q_n, \alert{v_{n+\frac{1}{2}}})\right) \\
+    q_{n+\frac{1}{2}} &= q_n + \frac{h}{2}g(q_{n+\frac{1}{2}}, v_{n+\frac{1}{2}})
+\end{align*}
+\vspace{-0.1cm}
+\centering
+\alert{Two implicit solves required!}
+\end{block}
+\end{column}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{block}{Key Observation}
+\centering
+For the special case $q' = v$, $v' = f(q)$, all implicit equations become \alert{explicit}!\\
+This is why Störmer-Verlet excels for separable Hamiltonian systems.
+\end{block}
+\end{frame}
+
+\section{Symplecticity}
+
+\begin{frame}{What is Symplecticity?}
+\begin{block}{Definition}
+A numerical integrator $\Phi_h$ is \emph{symplectic} if
+\begin{equation*}
+    \Phi_h'(p,q)^T \, J \, \Phi_h'(p,q) = J
+\end{equation*}
+at every point $(p,q)$.
+\end{block}
+
+\vspace{0.2cm}
+
+\textbf{Consequences:}
+\begin{itemize}
+    \item Preserves phase space volume (Liouville's theorem)
+    \item \alert{Bounded energy error} in the long term (no drift!)
+    \item Physically faithful simulation
+\end{itemize}
+
+\vspace{0.2cm}
+
+\small
+\begin{block}{Theorem: Symplecticity of Störmer-Verlet}
+The (SE1) and (SE2) sub-operators are symplectic, therefore their composition, the Störmer-Verlet (A) and (B) methods, are also symplectic.
+\end{block}
+\end{frame}
+
+\begin{frame}{Störmer-Verlet vs. Explicit Euler}
+\begin{center}
+\includegraphics[width=0.75\textwidth]{media/plots/02_sv_vs_euler.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\begin{itemize}
+    \item \textbf{Left:} Trajectories over 10 orbits ($h=0.01$)
+    \item \textbf{Right:} Energy error vs. time
+    \item \alert{Euler:} exponential energy drift, spiral trajectory
+    \item \alert{Verlet:} bounded oscillating error, stable ellipse
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Störmer-Verlet vs. RK2: The Key Comparison}
+\begin{center}
+\includegraphics[width=0.7\textwidth]{media/plots/03_sv_vs_rk2.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\textbf{Both methods are second-order ($O(h^2)$)!}
+\begin{itemize}
+    \item \alert{Verlet (symplectic):} Perfect ellipse after 250 orbits
+    \item \alert{RK2 (non-symplectic):} Trajectory drifts, energy grows
+\end{itemize}
+
+\vspace{0.1cm}
+\begin{center}
+\Large \alert{Symplecticity is more important than accuracy order!}
+\end{center}
+\end{frame}
+
+\begin{frame}{Störmer-Verlet vs. RK4: Long-Term Behavior}
+\begin{center}
+\includegraphics[width=0.7\textwidth]{media/plots/04_sv_vs_rk4_long_term.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\begin{itemize}
+    \item \textbf{RK4:} 4th-order accuracy, but \alert{not symplectic}
+    \item Short term (less than 100 orbits): RK4 is more accurate
+    \item Long term (more than 100 orbits): \alert{Verlet wins!}
+    \item RK4 energy drifts, Verlet remains bounded
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Energy Error Comparison: All Methods}
+\begin{center}
+\includegraphics[width=0.75\textwidth]{media/plots/06_long_term_energy_all_methods.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\textbf{Dichotomy:}
+\begin{itemize}
+    \item \textcolor{green!60!black}{Symplectic methods:} bounded oscillating error
+    \item \textcolor{red}{Non-symplectic methods:} energy drift
+\end{itemize}
+\end{frame}
+
+\section{Area Preservation}
+
+\begin{frame}{Liouville's Theorem and Area Preservation}
+\small
+\begin{block}{Liouville's Theorem}
+The flow of Hamiltonian systems preserves phase space volume:\\
+$\det \varphi_t'(p,q) = 1 \quad \forall t$
+\end{block}
+
+\textbf{For numerical methods:} A method preserves area if
+\begin{equation*}
+    \det \frac{\partial}{\partial(p_0,q_0)}\Phi_h = 1
+\end{equation*}
+
+\vspace{0.2cm}
+
+\textbf{Example - Pendulum motion:} $p' = q$, $q' = -\sin p$
+
+\begin{columns}
+\begin{column}{0.33\textwidth}
+\textbf{Explicit Euler:}
+\begin{equation*}
+    \det \Phi_h^{EE} = 1 + h^2\cos p_0 \neq 1
+\end{equation*}
+\end{column}
+\begin{column}{0.33\textwidth}
+\textbf{Implicit Euler:}
+\begin{equation*}
+    \det \Phi_h^{IE} = \frac{1}{1+h^2\cos p_1} \neq 1
+\end{equation*}
+\end{column}
+\begin{column}{0.33\textwidth}
+\textbf{SV (SE1, SE2):}
+\begin{equation*}
+    \det \Phi_h^{SE1} = \det \Phi_h^{SE2} = 1 \; \checkmark
+\end{equation*}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Visual Demonstration: Symplectic Methods}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{media/plots/08_area_preservation_symplectic.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\begin{itemize}
+    \item Circle of initial conditions in phase space, 100 steps ($h=0.2$)
+    \item \textbf{Verlet \& Sympl. Euler:} Area ratio $\approx 1.000$ (within 0.1\%)
+    \item The circle rotates and deforms, but \alert{area is preserved}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Visual Demonstration: Non-Symplectic Methods}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{media/plots/09_area_preservation_nonsymplectic.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\begin{itemize}
+    \item Same test, 1000 steps, $h=0.5$
+    \item \textbf{Euler:} Drastic expansion $\quad$ \textbf{RK2:} Significant distortion $\quad$ \textbf{RK4:} Measurable distortion
+\end{itemize}
+\end{frame}
+
+\section{Time Reversibility}
+
+\begin{frame}{Symmetry and Reversibility}
+\small
+\begin{columns}
+\begin{column}{0.54\textwidth}
+\begin{block}{Time Reversibility}
+\small
+Hamiltonian systems are reversible: if we reverse time and momenta ($t \to -t$, $p \to -p$), we retrace the original trajectory.
+\end{block}
+
+\vspace{0.15cm}
+
+\textbf{Störmer-Verlet is symmetric:}
+\vspace{-0.1cm}
+\begin{align*}
+    \text{Forward:} \quad &v_{n+\frac{1}{2}} = v_n + \frac{h}{2}f(q_n) \\
+    &q_{n+1} = q_n + h v_{n+\frac{1}{2}} \\
+    &v_{n+1} = v_{n+\frac{1}{2}} + \frac{h}{2}f(q_{n+1})
+\end{align*}
+\vspace{-0.1cm}
+
+If we reverse: $h \to -h$, $v \to -v$, we \alert{exactly recover} $(q_n, v_n)$!
+
+\textbf{Kick-Drift-Kick} $\Rightarrow$ symmetry
+\end{column}
+
+\begin{column}{0.46\textwidth}
+\begin{center}
+\vspace{-0.2cm}
+\includegraphics[width=\textwidth]{media/docs/Közdiff_Projekt_merged/Végleges/symmetric_reversible_exact_and_numerical.png}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Reversibility Test}
+\begin{center}
+\includegraphics[width=0.5\textwidth]{media/plots/07_time_reversibility.png}
+\end{center}
+\vspace{-0.2cm}
+\small
+\textbf{Test:} $N$ steps forward $\to$ momentum reversal $\to$ $N$ steps backward
+
+\begin{itemize}
+    \item \alert{Verlet:} Error $\approx 10^{-14}$ (machine precision!)
+    \item Euler, RK2, RK4: Errors scale with $O(h^p)$
+    \item Only symmetric methods are perfectly reversible
+\end{itemize}
+\end{frame}
+
+\section{Applications}
+
+\begin{frame}{Two-Particle Lennard-Jones Simulation}
+\fontsize{11pt}{9.6pt}
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Lennard-Jones potential:}
+
+Interaction of noble gases, simple molecules
+\vspace{-0.1cm}
+\begin{equation*}
+V_{LJ}(r) = 4\varepsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^{6} \right]
+\end{equation*}
+\vspace{-0.2cm}
+\begin{itemize}
+    \item $r^{-12}$: Pauli repulsion
+    \item $r^{-6}$: van der Waals attraction
+    \item Equilibrium distance:\\
+    $r_{eq} = 2^{1/6}\sigma \approx 1.122\sigma$
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{Simulation results:}
+\begin{itemize}
+    \item \textbf{Upper left:} Particle trajectories
+    \item \textbf{Upper right:} Distance oscillates around $r_{eq}$
+    \item \textbf{Lower left:} Energy converts
+    \item \textbf{Lower right:} Relative energy error stable!
+\end{itemize}
+\end{column}
+
+\begin{column}{0.52\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{media/plots/12_lennard_jones_2_particle.png}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Three-Particle Lennard-Jones Simulation}
+\fontsize{11pt}{9.6pt}
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Many-body system:}
+
+\begin{itemize}
+    \item 3 pairwise interactions
+    \item Complex dynamics
+    \item \alert{Energy is conserved!}
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Scalability:}
+\begin{itemize}
+    \item Larger systems: $10^4$--$10^9$ atoms
+    \item Real MD simulations: $10^6$--$10^9$ time steps
+    \item \alert{Verlet is the only option} for long-term stability
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Industrial applications:}
+\begin{itemize}
+    \item GROMACS, LAMMPS
+    \item AMBER, NAMD
+    \item Protein dynamics
+    \item Materials design
+\end{itemize}
+\end{column}
+
+\begin{column}{0.52\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{media/plots/13_lennard_jones_3_particle.png}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+\section{Summary}
+
+\begin{frame}{Comparison of Implemented Methods}
+\begin{table}
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Method} & \textbf{Type} & \textbf{Order} & \textbf{Symplectic} & \textbf{Reversible} \\
+\midrule
+\alert{Störmer-Verlet} & Splitting & 2 & \checkmark & \checkmark \\
+Sympl. Euler & Splitting & 1 & \checkmark & -- \\
+Explicit Euler & Standard & 1 & -- & -- \\
+RK2 (Midpoint) & Runge-Kutta & 2 & -- & -- \\
+RK4 & Runge-Kutta & 4 & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+
+\begin{block}{Key Question}
+\centering
+Is it worth using higher-order methods?\\
+\alert{The answer: NOT always!}
+\end{block}
+\end{frame}
+
+\begin{frame}{Summary}
+\begin{block}{Key Message}
+\centering
+\Large
+For Hamiltonian systems:\\
+\alert{Geometric structure $>$ Algebraic accuracy order}
+\end{block}
+
+\vspace{0.3cm}
+
+\small
+\textbf{Advantages of Störmer-Verlet:}
+\begin{itemize}
+    \item \textbf{Symplectic:} Preserves phase space geometry
+    \item \textbf{Bounded energy error:} No drift in the long term
+    \item \textbf{Area preservation:} Liouville's theorem satisfied
+    \item \textbf{Reversible:} Time-symmetric
+    \item \textbf{Efficient:} Only one force evaluation per step
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{When to use:} Conservative systems, long-term simulations\\
+\textbf{When NOT to use:} Dissipative systems, very short integrations
+\end{frame}
+
+\begin{frame}{Further Information}
+\textbf{Recommended reading:}
+\begin{itemize}
+    \item E. Hairer, C. Lubich, G. Wanner: \emph{Geometric Numerical Integration} (2006)
+    \item B. Leimkuhler, S. Reich: \emph{Simulating Hamiltonian Dynamics} (2004)
+    \item J.M. Sanz-Serna, M.P. Calvo: \emph{Numerical Hamiltonian Problems} (1994)
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Open-source implementation:}
+\begin{itemize}
+    \item GitHub repository: Python code + Jupyter notebook
+    \item 14 visualizations + 4 animations
+    \item Full reproducibility
+    \item Detailed documentation (PLOTS\_DOCUMENTATION.md, README.md)
+\end{itemize}
+
+\vspace{0.3cm}
+
+\begin{center}
+\Large
+\textbf{Thank you for your attention!}\\
+\vspace{0.2cm}
+\normalsize
+Questions?
+\end{center}
+\end{frame}
+
+\end{document}
